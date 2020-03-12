@@ -58,6 +58,16 @@ int contOUFlow = 0, pulsosAnt = 0, pulsosAct = 0;
 float velocidadPulsos = 0, velocidadRPM = 0, deltaT = 0.01;
 /* USER CODE END PV */
 
+//variables para control
+double error_vel_act = 0, error_vel_ant = 0;
+double velocidad_consigna=28;
+float KP = 1, KI = 10, KD = 0;
+double Ui_anterior=0, Ui_actual=0; // para control integral
+double Up=0;
+double Ud=0;
+int control=0;
+
+uint32_t duty_cycle_pid = 0;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
@@ -84,14 +94,13 @@ void interpreteComando(){
 		switch(buffer[1]){
 		case 'I':
 		case 'i':
-//			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, 0);
-//			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 1);
 			HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_4);
 			HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
 			consigna = atof(&buffer[2]);
-			duty_cycle = (uint32_t) ((consigna/23) * __HAL_TIM_GET_AUTORELOAD(&htim2));
-			__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, duty_cycle);
-			printf("\r\n Duty Cycle (inversion de marcha):  %" PRIu32 "\r\n", duty_cycle);
+			//duty_cycle = (uint32_t) ((consigna*0.6) * __HAL_TIM_GET_AUTORELOAD(&htim2));
+			//duty_cycle = (uint32_t) ((consigna));
+			//__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, duty_cycle);
+			//printf("\r\n Duty Cycle (inversion de marcha):  %" PRIu32 "\r\n", duty_cycle);
 
 			//imprimir = 1;
 			break;
@@ -100,8 +109,9 @@ void interpreteComando(){
 //			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, 1);
 //			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 0);
 			consigna = atof(&buffer[1]);
-			duty_cycle = (uint32_t) ((consigna/23) * __HAL_TIM_GET_AUTORELOAD(&htim2));
-			__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, duty_cycle);
+			//duty_cycle = (uint32_t) ((consigna/23) * __HAL_TIM_GET_AUTORELOAD(&htim2));
+			//duty_cycle = (uint32_t) ((consigna));
+			//__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, duty_cycle);
 			printf("\r\n Duty Cycle: %" PRIu32 "\r\n", __HAL_TIM_GET_COMPARE(&htim2,TIM_CHANNEL_1));
 			//imprimir = 1;
 
@@ -110,6 +120,11 @@ void interpreteComando(){
 	case 'v':
 	case 'V':
 		printf("\r\nVelocidad: %lf\r\n", velocidadRPM);
+		break;
+	case 'c':
+	case 'C':
+		control=1;
+		break;
 	}
 
 }
@@ -160,8 +175,8 @@ int main(void)
     HAL_TIM_Base_Start_IT(&htim3);
     HAL_TIM_Encoder_Start_IT(&htim3, TIM_CHANNEL_ALL);
 
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, 1);
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 0);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, 0);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -185,9 +200,23 @@ void HAL_TIM_PeriodElapsedCallback (TIM_HandleTypeDef *htim){
 		velocidadPulsos = (pulsosAct - pulsosAnt)/deltaT;
 		velocidadRPM = velocidadPulsos/(168*44) * 60;
 		pulsosAnt = pulsosAct;
-//		if(imprimir){
-//			//printf("\r\nVelocidad: %f\r\n", velocidadRPM); // @suppress("Float formatting support")
-//		}
+		if(control==1){
+
+			//printf("\r\nVelocidad: %f\r\n", velocidadRPM); // @suppress("Float formatting support")
+			//calculo PID:
+			printf("\r\nVelocidad: %lf\r\n", velocidadRPM);
+			error_vel_act = velocidad_consigna-velocidadRPM;
+			Up=KP * error_vel_act;
+			Ui_actual=Ui_anterior + KI * deltaT * error_vel_ant;
+			Ud=KD/ deltaT * (error_vel_act-error_vel_ant);
+			duty_cycle_pid = (uint32_t) (Up + Ui_actual + Ud);
+			if(duty_cycle_pid > 12200){
+				duty_cycle_pid=12200;
+			}
+			__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, duty_cycle_pid);
+			Ui_anterior=Ui_actual;
+			error_vel_ant=error_vel_act;
+		}
 	}else if(htim->Instance == TIM3){
 		if(__HAL_TIM_GET_COUNTER(&htim3) > (htim->Init.Period+1)/2){ //Underflow
 			contOUFlow--;
@@ -415,10 +444,10 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 0;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 64999;
+  htim3.Init.Period = 64999; //Para utilizar un numero redondo.
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  sConfig.EncoderMode = TIM_ENCODERMODE_TI1;
+  sConfig.EncoderMode = TIM_ENCODERMODE_TI12;
   sConfig.IC1Polarity = TIM_ICPOLARITY_RISING;
   sConfig.IC1Selection = TIM_ICSELECTION_DIRECTTI;
   sConfig.IC1Prescaler = TIM_ICPSC_DIV1;

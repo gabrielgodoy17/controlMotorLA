@@ -37,8 +37,8 @@ ExampleUSARTPWM.list \
 all: ExampleUSARTPWM.elf secondary-outputs
 
 # Tool invocations
-ExampleUSARTPWM.elf: $(OBJS) $(USER_OBJS) C:\Users\gabgodoy\STM32CubeIDE\workspace_1.1.0\ExampleUSARTPWM\STM32F103C8TX_FLASH.ld
-	arm-none-eabi-gcc -o "ExampleUSARTPWM.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"C:\Users\gabgodoy\STM32CubeIDE\workspace_1.1.0\ExampleUSARTPWM\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="ExampleUSARTPWM.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -u _printf_float -u _scanf_float -Wl,--start-group -lc -lm -Wl,--end-group
+ExampleUSARTPWM.elf: $(OBJS) $(USER_OBJS) C:\Users\gabgodoy\OneDrive\ -\ everis\Documentos\PFE-MECATRONICA\ControlMotorPWM\controlMotorLA\STM32F103C8TX_FLASH.ld
+	arm-none-eabi-gcc -o "ExampleUSARTPWM.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"C:\Users\gabgodoy\OneDrive - everis\Documentos\PFE-MECATRONICA\ControlMotorPWM\controlMotorLA\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="ExampleUSARTPWM.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -u _printf_float -u _scanf_float -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
